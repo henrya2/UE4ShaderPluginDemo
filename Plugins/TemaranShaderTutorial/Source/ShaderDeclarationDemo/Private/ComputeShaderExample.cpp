@@ -13,7 +13,7 @@
 #include "UniformBuffer.h"
 #include "RHICommandList.h"
 
-#define NUM_THREADS_PER_GROUP_DIMENSION 8
+#define NUM_THREADS_PER_GROUP_DIMENSION 4
 
 /**********************************************************************************************/
 /* This class carries our parameter declarations and acts as the bridge between cpp and HLSL. */

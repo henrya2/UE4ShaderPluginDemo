@@ -15,6 +15,7 @@
 #include "RenderGraphBuilder.h"
 #include "RenderTargetPool.h"
 #include "Runtime/Core/Public/Modules/ModuleManager.h"
+#include "Engine/Engine.h"
 
 IMPLEMENT_MODULE(FShaderDeclarationDemoModule, ShaderDeclarationDemo)
 
@@ -47,11 +48,13 @@ void FShaderDeclarationDemoModule::BeginRendering()
 
 	bCachedParametersValid = false;
 
+	HandlePreRenderHandle = GEngine->GetPreRenderDelegate().AddRaw(this, &FShaderDeclarationDemoModule::HandlePreRender);
+
 	const FName RendererModuleName("Renderer");
 	IRendererModule* RendererModule = FModuleManager::GetModulePtr<IRendererModule>(RendererModuleName);
 	if (RendererModule)
 	{
-		OnPostResolvedSceneColorHandle = RendererModule->GetResolvedSceneColorCallbacks().AddRaw(this, &FShaderDeclarationDemoModule::PostResolveSceneColor_RenderThread);
+		//OnPostResolvedSceneColorHandle = RendererModule->GetResolvedSceneColorCallbacks().AddRaw(this, &FShaderDeclarationDemoModule::PostResolveSceneColor_RenderThread);
 	}
 }
 
@@ -62,11 +65,14 @@ void FShaderDeclarationDemoModule::EndRendering()
 		return;
 	}
 
+	GEngine->GetPreRenderDelegate().Remove(HandlePreRenderHandle);
+	HandlePreRenderHandle.Reset();
+
 	const FName RendererModuleName("Renderer");
 	IRendererModule* RendererModule = FModuleManager::GetModulePtr<IRendererModule>(RendererModuleName);
 	if (RendererModule)
 	{
-		RendererModule->GetResolvedSceneColorCallbacks().Remove(OnPostResolvedSceneColorHandle);
+		//RendererModule->GetResolvedSceneColorCallbacks().Remove(OnPostResolvedSceneColorHandle);
 	}
 
 	OnPostResolvedSceneColorHandle.Reset();
@@ -118,4 +124,19 @@ void FShaderDeclarationDemoModule::Draw_RenderThread(const FShaderUsageExamplePa
 
 	FComputeShaderExample::RunComputeShader_RenderThread(RHICmdList, DrawParameters, ComputeShaderOutput->GetRenderTargetItem().UAV);
 	FPixelShaderExample::DrawToRenderTarget_RenderThread(RHICmdList, DrawParameters, ComputeShaderOutput->GetRenderTargetItem().TargetableTexture);
+}
+
+void FShaderDeclarationDemoModule::HandlePreRender()
+{
+	if (!bCachedParametersValid)
+	{
+		return;
+	}
+
+	// Depending on your data, you might not have to lock here, just added this code to show how you can do it if you have to.
+	RenderEveryFrameLock.Lock();
+	FShaderUsageExampleParameters Copy = CachedShaderUsageExampleParameters;
+	RenderEveryFrameLock.Unlock();
+
+	Draw_RenderThread(Copy);
 }

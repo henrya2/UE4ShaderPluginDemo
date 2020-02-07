@@ -77,10 +77,6 @@ void AShaderUsageDemoCharacter::Tick(float DeltaSeconds)
 	APlayerController* PlayerController = Cast<APlayerController>(GetController());
 	if(PlayerController)
 	{ 
-		if (PlayerController->IsInputKeyDown(EKeys::W)) { AddMovementInput(GetActorForwardVector(), 1.0); }
-		if (PlayerController->IsInputKeyDown(EKeys::S)) { AddMovementInput(GetActorForwardVector(), -1.0f); }
-		if (PlayerController->IsInputKeyDown(EKeys::A)) { AddMovementInput(GetActorRightVector(), -1.0f); }
-		if (PlayerController->IsInputKeyDown(EKeys::D)) { AddMovementInput(GetActorRightVector(), 1.0f); }
 		if (PlayerController->IsInputKeyDown(EKeys::E)) { ComputeShaderBlendScalar += 1.0f; }
 		if (PlayerController->IsInputKeyDown(EKeys::Q)) { ComputeShaderBlendScalar -= 1.0f; }
 	}
@@ -149,22 +145,139 @@ void AShaderUsageDemoCharacter::OnFire()
 
 void AShaderUsageDemoCharacter::SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent)
 {
+	// set up gameplay key bindings
 	check(PlayerInputComponent);
 
-	PlayerInputComponent->BindKey(EKeys::SpaceBar, IE_Pressed, this, &AShaderUsageDemoCharacter::Jump);
-	PlayerInputComponent->BindKey(EKeys::SpaceBar, IE_Released, this, &AShaderUsageDemoCharacter::StopJumping);
-	PlayerInputComponent->BindKey(EKeys::LeftMouseButton, IE_Pressed, this, &AShaderUsageDemoCharacter::OnFire);
+	// Set up gameplay key bindings
 
-	PlayerInputComponent->BindAxisKey(EKeys::MouseX, this, &AShaderUsageDemoCharacter::TurnAtRate);
-	PlayerInputComponent->BindAxisKey(EKeys::MouseY, this, &AShaderUsageDemoCharacter::LookUpAtRate);	
+	// Bind jump events
+	PlayerInputComponent->BindAction("Jump", IE_Pressed, this, &ACharacter::Jump);
+	PlayerInputComponent->BindAction("Jump", IE_Released, this, &ACharacter::StopJumping);
+
+	// Bind fire event
+	PlayerInputComponent->BindAction("Fire", IE_Pressed, this, &AShaderUsageDemoCharacter::OnFire);
+
+	// Attempt to enable touch screen movement
+	TryEnableTouchscreenMovement(PlayerInputComponent);
+
+	// Bind movement events
+	PlayerInputComponent->BindAxis("MoveForward", this, &AShaderUsageDemoCharacter::MoveForward);
+	PlayerInputComponent->BindAxis("MoveRight", this, &AShaderUsageDemoCharacter::MoveRight);
+
+	// We have 2 versions of the rotation bindings to handle different kinds of devices differently
+	// "turn" handles devices that provide an absolute delta, such as a mouse.
+	// "turnrate" is for devices that we choose to treat as a rate of change, such as an analog joystick
+	PlayerInputComponent->BindAxis("Turn", this, &APawn::AddControllerYawInput);
+	PlayerInputComponent->BindAxis("TurnRate", this, &AShaderUsageDemoCharacter::TurnAtRate);
+	PlayerInputComponent->BindAxis("LookUp", this, &APawn::AddControllerPitchInput);
+	PlayerInputComponent->BindAxis("LookUpRate", this, &AShaderUsageDemoCharacter::LookUpAtRate);
+}
+
+
+void AShaderUsageDemoCharacter::BeginTouch(const ETouchIndex::Type FingerIndex, const FVector Location)
+{
+	// If touch is already pressed check the index. If it is not the same as the current touch assume a second touch and thus we want to fire
+	if (TouchItem.bIsPressed == true)
+	{
+		if (TouchItem.FingerIndex != FingerIndex)
+		{
+			OnFire();
+		}
+	}
+	else
+	{
+		// Cache the finger index and touch location and flag we are processing a touch
+		TouchItem.bIsPressed = true;
+		TouchItem.FingerIndex = FingerIndex;
+		TouchItem.Location = Location;
+		TouchItem.bMoved = false;
+	}
+}
+
+void AShaderUsageDemoCharacter::EndTouch(const ETouchIndex::Type FingerIndex, const FVector Location)
+{
+	// If we didn't record the start event do nothing, or this is a different index
+	if ((TouchItem.bIsPressed == false) || (TouchItem.FingerIndex != FingerIndex))
+	{
+		return;
+	}
+
+	// If the index matches the start index and we didn't process any movement we assume we want to fire
+	if ((FingerIndex == TouchItem.FingerIndex) && (TouchItem.bMoved == false))
+	{
+		OnFire();
+	}
+
+	// Flag we are no longer processing the touch event
+	TouchItem.bIsPressed = false;
+}
+
+void AShaderUsageDemoCharacter::TouchUpdate(const ETouchIndex::Type FingerIndex, const FVector Location)
+{
+	// If we are processing a touch event and this index matches the initial touch event process movement
+	if ((TouchItem.bIsPressed == true) && (TouchItem.FingerIndex == FingerIndex))
+	{
+		if (GetWorld() != nullptr)
+		{
+			UGameViewportClient* ViewportClient = GetWorld()->GetGameViewport();
+			if (ViewportClient != nullptr)
+			{
+				FVector MoveDelta = Location - TouchItem.Location;
+				FVector2D ScreenSize;
+				ViewportClient->GetViewportSize(ScreenSize);
+				FVector2D ScaledDelta = FVector2D(MoveDelta.X, MoveDelta.Y) / ScreenSize;
+				if (FMath::Abs(ScaledDelta.X) >= (4.0f / ScreenSize.X))
+				{
+					TouchItem.bMoved = true;
+					float Value = ScaledDelta.X * BaseTurnRate;
+					AddControllerYawInput(Value);
+				}
+				if (FMath::Abs(ScaledDelta.Y) >= (4.0f / ScreenSize.Y))
+				{
+					TouchItem.bMoved = true;
+					float Value = ScaledDelta.Y* BaseTurnRate;
+					AddControllerPitchInput(Value);
+				}
+				TouchItem.Location = Location;
+			}
+			TouchItem.Location = Location;
+		}
+	}
+}
+
+void AShaderUsageDemoCharacter::MoveForward(float Value)
+{
+	if (Value != 0.0f)
+	{
+		// Add movement in that direction
+		AddMovementInput(GetActorForwardVector(), Value);
+	}
+}
+
+void AShaderUsageDemoCharacter::MoveRight(float Value)
+{
+	if (Value != 0.0f)
+	{
+		// Add movement in that direction
+		AddMovementInput(GetActorRightVector(), Value);
+	}
 }
 
 void AShaderUsageDemoCharacter::TurnAtRate(float Rate)
 {
+	// Calculate delta for this frame from the rate information
 	AddControllerYawInput(Rate * BaseTurnRate * GetWorld()->GetDeltaSeconds());
 }
 
 void AShaderUsageDemoCharacter::LookUpAtRate(float Rate)
 {
-	AddControllerPitchInput(-Rate * BaseLookUpRate * GetWorld()->GetDeltaSeconds());
+	// Calculate delta for this frame from the rate information
+	AddControllerPitchInput(Rate * BaseLookUpRate * GetWorld()->GetDeltaSeconds());
+}
+
+void AShaderUsageDemoCharacter::TryEnableTouchscreenMovement(UInputComponent* PlayerInputComponent)
+{
+	PlayerInputComponent->BindTouch(EInputEvent::IE_Pressed, this, &AShaderUsageDemoCharacter::BeginTouch);
+	PlayerInputComponent->BindTouch(EInputEvent::IE_Released, this, &AShaderUsageDemoCharacter::EndTouch);
+	PlayerInputComponent->BindTouch(EInputEvent::IE_Repeat, this, &AShaderUsageDemoCharacter::TouchUpdate);
 }

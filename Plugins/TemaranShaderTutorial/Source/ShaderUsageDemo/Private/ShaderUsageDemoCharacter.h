@@ -67,14 +67,83 @@ public:
 	virtual void Tick(float DeltaSeconds) override;
 
 protected:
+
+	/** Fires a virtual projectile. */
+	void OnFire();
+
+	/** Handles moving forward/backward */
+	void MoveForward(float Val);
+
+	/** Handles strafing movement, left and right */
+	void MoveRight(float Val);
+
+	/**
+	 * Called via input to turn at a given rate.
+	 * @param Rate	This is a normalized rate, i.e. 1.0 means 100% of desired turn rate
+	 */
+	void TurnAtRate(float Rate);
+
+	/**
+	 * Called via input to turn look up/down at a given rate.
+	 * @param Rate	This is a normalized rate, i.e. 1.0 means 100% of desired turn rate
+	 */
+	void LookUpAtRate(float Rate);
+
+	// APawn interface
+	virtual void SetupPlayerInputComponent(class UInputComponent* InputComponent) override;
+	// End of APawn interface
+
+	/** Structure that handles touch data so we can process the various stages of touch. */
+	struct TouchData
+	{
+		TouchData() { bIsPressed = false; Location = FVector::ZeroVector; }
+		bool bIsPressed;
+		ETouchIndex::Type FingerIndex;
+		FVector Location;
+		bool bMoved;
+	};
+
+	/*
+	 * Handle begin touch event.
+	 * Stores the index and location of the touch in a structure
+	 *
+	 * @param	FingerIndex	The touch index
+	 * @param	Location	Location of the touch
+	 */
+	void BeginTouch(const ETouchIndex::Type FingerIndex, const FVector Location);
+
+	/*
+	 * Handle end touch event.
+	 * If there was no movement processed this will fire a projectile, otherwise this will reset pressed flag in the touch structure
+	 *
+	 * @param	FingerIndex	The touch index
+	 * @param	Location	Location of the touch
+	 */
+	void EndTouch(const ETouchIndex::Type FingerIndex, const FVector Location);
+
+	/*
+	 * Handle touch update.
+	 * This will update the look position based on the change in touching position
+	 *
+	 * @param	FingerIndex	The touch index
+	 * @param	Location	Location of the touch
+	 */
+	void TouchUpdate(const ETouchIndex::Type FingerIndex, const FVector Location);
+
+	// Structure to handle touch updating
+	TouchData	TouchItem;
+
+	/*
+	 * Configures input for touchscreen devices if there is a valid touch interface for doing so
+	 *
+	 * @param	InputComponent	The input component pointer to bind controls to
+	 * @returns true if touch controls were enabled.
+	 */
+	void TryEnableTouchscreenMovement(UInputComponent* InputComponent);
+
+protected:
 	float EndColorBuildup;
 	float EndColorBuildupDirection;
 	float ComputeShaderBlend;
 	float TotalTimeSecs;
-
-	void OnFire();
-	void TurnAtRate(float Rate);
-	void LookUpAtRate(float Rate);
-
-	virtual void SetupPlayerInputComponent(UInputComponent* InputComponent) override;
 };

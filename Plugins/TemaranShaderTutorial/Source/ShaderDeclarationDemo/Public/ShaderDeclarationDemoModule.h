@@ -100,6 +100,10 @@ private:
 	FCriticalSection RenderEveryFrameLock;
 	volatile bool bCachedParametersValid;
 
+	FDelegateHandle HandlePreRenderHandle;
+
 	void PostResolveSceneColor_RenderThread(FRHICommandListImmediate& RHICmdList, class FSceneRenderTargets& SceneContext);
 	void Draw_RenderThread(const FShaderUsageExampleParameters& DrawParameters);
+
+	void HandlePreRender();
 };

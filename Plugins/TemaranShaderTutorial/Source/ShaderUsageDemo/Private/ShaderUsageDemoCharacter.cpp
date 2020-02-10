@@ -100,6 +100,7 @@ void AShaderUsageDemoCharacter::Tick(float DeltaSeconds)
 	// If doing this for realsies, you should avoid doing this every frame unless you have to of course.
 	// We set it every frame here since we're updating the end color and simulation state. Boop.
 	FShaderDeclarationDemoModule::Get().UpdateParameters(DrawParameters);
+	FShaderDeclarationDemoModule::Get().DrawTarget();
 }
 
 void AShaderUsageDemoCharacter::OnFire()

@@ -93,6 +93,8 @@ public:
 	// different intervals to save on locking and GPU transfer time.
 	void UpdateParameters(FShaderUsageExampleParameters& DrawParameters);
 
+	void DrawTarget();
+
 private:
 	TRefCountPtr<IPooledRenderTarget> ComputeShaderOutput;
 	FShaderUsageExampleParameters CachedShaderUsageExampleParameters;
@@ -100,10 +102,12 @@ private:
 	FCriticalSection RenderEveryFrameLock;
 	volatile bool bCachedParametersValid;
 
+	TRefCountPtr<IPooledRenderTarget> DummyTexture;
+
 	FDelegateHandle HandlePreRenderHandle;
 
 	void PostResolveSceneColor_RenderThread(FRHICommandListImmediate& RHICmdList, class FSceneRenderTargets& SceneContext);
-	void Draw_RenderThread(const FShaderUsageExampleParameters& DrawParameters);
+	void Draw_RenderThread(FRHICommandListImmediate& RHICmdList, const FShaderUsageExampleParameters& DrawParameters);
 
 	void HandlePreRender();
 };

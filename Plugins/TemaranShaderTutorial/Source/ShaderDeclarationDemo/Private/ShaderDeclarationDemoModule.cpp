@@ -48,7 +48,7 @@ void FShaderDeclarationDemoModule::BeginRendering()
 
 	bCachedParametersValid = false;
 
-	HandlePreRenderHandle = GEngine->GetPreRenderDelegate().AddRaw(this, &FShaderDeclarationDemoModule::HandlePreRender);
+	//HandlePreRenderHandle = GEngine->GetPreRenderDelegate().AddRaw(this, &FShaderDeclarationDemoModule::HandlePreRender);
 
 	const FName RendererModuleName("Renderer");
 	IRendererModule* RendererModule = FModuleManager::GetModulePtr<IRendererModule>(RendererModuleName);
@@ -80,10 +80,26 @@ void FShaderDeclarationDemoModule::EndRendering()
 
 void FShaderDeclarationDemoModule::UpdateParameters(FShaderUsageExampleParameters& DrawParameters)
 {
-	RenderEveryFrameLock.Lock();
+	//RenderEveryFrameLock.Lock();
 	CachedShaderUsageExampleParameters = DrawParameters;
 	bCachedParametersValid = true;
-	RenderEveryFrameLock.Unlock();
+	//RenderEveryFrameLock.Unlock();
+}
+
+void FShaderDeclarationDemoModule::DrawTarget()
+{
+	if (!bCachedParametersValid)
+		return;
+
+	FShaderUsageExampleParameters Copy = CachedShaderUsageExampleParameters;
+	auto* ThisPtr = this;
+
+	ENQUEUE_RENDER_COMMAND(DrawTargetCommand)(
+		[ThisPtr, Copy](FRHICommandListImmediate& RHICmdList)
+	{
+		ThisPtr->Draw_RenderThread(RHICmdList, Copy);
+	}
+	);
 }
 
 void FShaderDeclarationDemoModule::PostResolveSceneColor_RenderThread(FRHICommandListImmediate& RHICmdList, class FSceneRenderTargets& SceneContext)
@@ -98,10 +114,10 @@ void FShaderDeclarationDemoModule::PostResolveSceneColor_RenderThread(FRHIComman
 	FShaderUsageExampleParameters Copy = CachedShaderUsageExampleParameters;
 	RenderEveryFrameLock.Unlock();
 
-	Draw_RenderThread(Copy);
+	Draw_RenderThread(RHICmdList, Copy);
 }
 
-void FShaderDeclarationDemoModule::Draw_RenderThread(const FShaderUsageExampleParameters& DrawParameters)
+void FShaderDeclarationDemoModule::Draw_RenderThread(FRHICommandListImmediate& RHICmdList, const FShaderUsageExampleParameters& DrawParameters)
 {
 	check(IsInRenderingThread());
 
@@ -110,20 +126,28 @@ void FShaderDeclarationDemoModule::Draw_RenderThread(const FShaderUsageExamplePa
 		return;
 	}
 
-	FRHICommandListImmediate& RHICmdList = GRHICommandList.GetImmediateCommandList();
-
 	QUICK_SCOPE_CYCLE_COUNTER(STAT_ShaderPlugin_Render); // Used to gather CPU profiling data for the UE4 session frontend
 	SCOPED_DRAW_EVENT(RHICmdList, ShaderPlugin_Render); // Used to profile GPU activity and add metadata to be consumed by for example RenderDoc
 
 	if (!ComputeShaderOutput.IsValid())
 	{
-		FPooledRenderTargetDesc ComputeShaderOutputDesc(FPooledRenderTargetDesc::Create2DDesc(DrawParameters.GetRenderTargetSize(), PF_R32_UINT, FClearValueBinding::None, TexCreate_None, TexCreate_ShaderResource | TexCreate_UAV, false));
+		FPooledRenderTargetDesc ComputeShaderOutputDesc(FPooledRenderTargetDesc::Create2DDesc(DrawParameters.GetRenderTargetSize(), PF_B8G8R8A8, FClearValueBinding::None, TexCreate_None, TexCreate_ShaderResource | TexCreate_UAV, false));
 		ComputeShaderOutputDesc.DebugName = TEXT("ShaderPlugin_ComputeShaderOutput");
 		GRenderTargetPool.FindFreeElement(RHICmdList, ComputeShaderOutputDesc, ComputeShaderOutput, TEXT("ShaderPlugin_ComputeShaderOutput"));
 	}
 
+	if (!DummyTexture.IsValid())
+	{
+		FPooledRenderTargetDesc ComputeShaderOutputDesc(FPooledRenderTargetDesc::Create2DDesc(DrawParameters.GetRenderTargetSize(), PF_B8G8R8A8, FClearValueBinding::White, TexCreate_None, TexCreate_ShaderResource, false));
+		ComputeShaderOutputDesc.DebugName = TEXT("ShaderPlugin_DummyTexture");
+		GRenderTargetPool.FindFreeElement(RHICmdList, ComputeShaderOutputDesc, DummyTexture, TEXT("ShaderPlugin_DummyTexture"));
+	}
+
 	FComputeShaderExample::RunComputeShader_RenderThread(RHICmdList, DrawParameters, ComputeShaderOutput->GetRenderTargetItem().UAV);
-	FPixelShaderExample::DrawToRenderTarget_RenderThread(RHICmdList, DrawParameters, ComputeShaderOutput->GetRenderTargetItem().TargetableTexture);
+
+	RHICmdList.CopyToResolveTarget(ComputeShaderOutput->GetRenderTargetItem().TargetableTexture, ComputeShaderOutput->GetRenderTargetItem().ShaderResourceTexture, FResolveParams());
+
+	FPixelShaderExample::DrawToRenderTarget_RenderThread(RHICmdList, DrawParameters, ComputeShaderOutput->GetRenderTargetItem().ShaderResourceTexture);
 }
 
 void FShaderDeclarationDemoModule::HandlePreRender()
@@ -138,5 +162,7 @@ void FShaderDeclarationDemoModule::HandlePreRender()
 	FShaderUsageExampleParameters Copy = CachedShaderUsageExampleParameters;
 	RenderEveryFrameLock.Unlock();
 
-	Draw_RenderThread(Copy);
+	FRHICommandListImmediate& RHICmdList = GRHICommandList.GetImmediateCommandList();
+
+	Draw_RenderThread(RHICmdList, Copy);
 }

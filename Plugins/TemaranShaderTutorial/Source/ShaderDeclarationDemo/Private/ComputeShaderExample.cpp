@@ -13,7 +13,7 @@
 #include "UniformBuffer.h"
 #include "RHICommandList.h"
 
-#define NUM_THREADS_PER_GROUP_DIMENSION 4
+#define NUM_THREADS_PER_GROUP_DIMENSION 32
 
 /**********************************************************************************************/
 /* This class carries our parameter declarations and acts as the bridge between cpp and HLSL. */
@@ -25,7 +25,7 @@ public:
 	SHADER_USE_PARAMETER_STRUCT(FComputeShaderExampleCS, FGlobalShader);
 
 	BEGIN_SHADER_PARAMETER_STRUCT(FParameters, )
-		SHADER_PARAMETER_UAV(RWTexture2D<uint>, OutputTexture)
+		SHADER_PARAMETER_UAV(RWTexture2D<float4>, OutputTexture)
 		SHADER_PARAMETER(FVector2D, TextureSize) // Metal doesn't support GetDimensions(), so we send in this data via our parameters.
 		SHADER_PARAMETER(float, SimulationState)
 	END_SHADER_PARAMETER_STRUCT()
@@ -64,7 +64,10 @@ void FComputeShaderExample::RunComputeShader_RenderThread(FRHICommandListImmedia
 	PassParameters.SimulationState = DrawParameters.SimulationState;
 
 	TShaderMapRef<FComputeShaderExampleCS> ComputeShader(GetGlobalShaderMap(GMaxRHIFeatureLevel));
+
 	FComputeShaderUtils::Dispatch(RHICmdList, *ComputeShader, PassParameters, 
 								FIntVector(FMath::DivideAndRoundUp(DrawParameters.GetRenderTargetSize().X, NUM_THREADS_PER_GROUP_DIMENSION),
 										   FMath::DivideAndRoundUp(DrawParameters.GetRenderTargetSize().Y, NUM_THREADS_PER_GROUP_DIMENSION), 1));
+
+	RHICmdList.TransitionResource(EResourceTransitionAccess::EReadable, EResourceTransitionPipeline::EComputeToGfx, ComputeShaderOutputUAV);
 }

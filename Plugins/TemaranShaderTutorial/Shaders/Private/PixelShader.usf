@@ -15,8 +15,6 @@ void MainVertexShader(float4 InPosition : ATTRIBUTE0, float2 InUV : ATTRIBUTE1, 
 ///////////////
 
 Texture2D<float4> ComputeShaderOutput;
-Texture2D ShaderTexture;
-SamplerState ShaderTextureSampler;
 float4 StartColor;
 float4 EndColor;
 float2 TextureSize;
@@ -37,6 +35,7 @@ void MainPixelShader(in float2 uv : TEXCOORD0, out float4 OutColor : SV_Target0)
 	float alpha = length(uv) / length(float2(1, 1));
 	float4 solidColorComponent = lerp(StartColor, EndColor, alpha) * (1.0 - BlendFactor);
 	//float4 computeShaderComponent = float4(r, g, b, a) / 255.0 * BlendFactor;
-	float4 computeShaderComponent = ShaderTexture.Sample(ShaderTextureSampler, uv) * BlendFactor;
+
+	float4 computeShaderComponent = ComputeShaderOutput.Load(int3(TextureSize.x * uv.x, TextureSize.y * uv.y, 0)) * BlendFactor;
 	OutColor = solidColorComponent + computeShaderComponent;
 }

@@ -102,8 +102,6 @@ private:
 	FCriticalSection RenderEveryFrameLock;
 	volatile bool bCachedParametersValid;
 
-	TRefCountPtr<IPooledRenderTarget> DummyTexture;
-
 	FDelegateHandle HandlePreRenderHandle;
 
 	void PostResolveSceneColor_RenderThread(FRHICommandListImmediate& RHICmdList, class FSceneRenderTargets& SceneContext);

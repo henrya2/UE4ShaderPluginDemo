@@ -131,23 +131,14 @@ void FShaderDeclarationDemoModule::Draw_RenderThread(FRHICommandListImmediate& R
 
 	if (!ComputeShaderOutput.IsValid())
 	{
-		FPooledRenderTargetDesc ComputeShaderOutputDesc(FPooledRenderTargetDesc::Create2DDesc(DrawParameters.GetRenderTargetSize(), PF_B8G8R8A8, FClearValueBinding::None, TexCreate_None, TexCreate_ShaderResource | TexCreate_UAV, false));
+		FPooledRenderTargetDesc ComputeShaderOutputDesc(FPooledRenderTargetDesc::Create2DDesc(DrawParameters.GetRenderTargetSize(), PF_R8G8B8A8, FClearValueBinding::None, TexCreate_None, TexCreate_RenderTargetable | TexCreate_UAV, false));
 		ComputeShaderOutputDesc.DebugName = TEXT("ShaderPlugin_ComputeShaderOutput");
 		GRenderTargetPool.FindFreeElement(RHICmdList, ComputeShaderOutputDesc, ComputeShaderOutput, TEXT("ShaderPlugin_ComputeShaderOutput"));
 	}
 
-	if (!DummyTexture.IsValid())
-	{
-		FPooledRenderTargetDesc ComputeShaderOutputDesc(FPooledRenderTargetDesc::Create2DDesc(DrawParameters.GetRenderTargetSize(), PF_B8G8R8A8, FClearValueBinding::White, TexCreate_None, TexCreate_ShaderResource, false));
-		ComputeShaderOutputDesc.DebugName = TEXT("ShaderPlugin_DummyTexture");
-		GRenderTargetPool.FindFreeElement(RHICmdList, ComputeShaderOutputDesc, DummyTexture, TEXT("ShaderPlugin_DummyTexture"));
-	}
-
 	FComputeShaderExample::RunComputeShader_RenderThread(RHICmdList, DrawParameters, ComputeShaderOutput->GetRenderTargetItem().UAV);
 
-	RHICmdList.CopyToResolveTarget(ComputeShaderOutput->GetRenderTargetItem().TargetableTexture, ComputeShaderOutput->GetRenderTargetItem().ShaderResourceTexture, FResolveParams());
-
-	FPixelShaderExample::DrawToRenderTarget_RenderThread(RHICmdList, DrawParameters, ComputeShaderOutput->GetRenderTargetItem().ShaderResourceTexture);
+	FPixelShaderExample::DrawToRenderTarget_RenderThread(RHICmdList, DrawParameters, ComputeShaderOutput->GetRenderTargetItem().TargetableTexture);
 }
 
 void FShaderDeclarationDemoModule::HandlePreRender()

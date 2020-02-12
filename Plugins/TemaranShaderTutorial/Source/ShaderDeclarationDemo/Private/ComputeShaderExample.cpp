@@ -13,7 +13,7 @@
 #include "UniformBuffer.h"
 #include "RHICommandList.h"
 
-#define NUM_THREADS_PER_GROUP_DIMENSION 32
+#define NUM_THREADS_PER_GROUP_DIMENSION 8
 
 /**********************************************************************************************/
 /* This class carries our parameter declarations and acts as the bridge between cpp and HLSL. */
@@ -25,7 +25,9 @@ public:
 	SHADER_USE_PARAMETER_STRUCT(FComputeShaderExampleCS, FGlobalShader);
 
 	BEGIN_SHADER_PARAMETER_STRUCT(FParameters, )
+		SHADER_PARAMETER_TEXTURE(Texture2D, SrcTexture)
 		SHADER_PARAMETER_UAV(RWTexture2D<float4>, OutputTexture)
+		SHADER_PARAMETER_UAV(RWBuffer<float4>, DstBuffer)
 		SHADER_PARAMETER(FVector2D, TextureSize) // Metal doesn't support GetDimensions(), so we send in this data via our parameters.
 		SHADER_PARAMETER(float, SimulationState)
 	END_SHADER_PARAMETER_STRUCT()
@@ -40,9 +42,9 @@ public:
 	{
 		FGlobalShader::ModifyCompilationEnvironment(Parameters, OutEnvironment);
 
-		OutEnvironment.SetDefine(TEXT("THREADGROUPSIZE_X"), NUM_THREADS_PER_GROUP_DIMENSION);
-		OutEnvironment.SetDefine(TEXT("THREADGROUPSIZE_Y"), NUM_THREADS_PER_GROUP_DIMENSION);
-		OutEnvironment.SetDefine(TEXT("THREADGROUPSIZE_Z"), 1);
+		OutEnvironment.SetDefine(TEXT("THREADGROUPSIZE_X1"), NUM_THREADS_PER_GROUP_DIMENSION);
+		OutEnvironment.SetDefine(TEXT("THREADGROUPSIZE_Y1"), NUM_THREADS_PER_GROUP_DIMENSION);
+		OutEnvironment.SetDefine(TEXT("THREADGROUPSIZE_Z1"), 1);
 	}
 };
 
@@ -50,16 +52,19 @@ public:
 //                            ShaderType                            ShaderPath                     Shader function name    Type
 IMPLEMENT_GLOBAL_SHADER(FComputeShaderExampleCS, "/TutorialShaders/Private/ComputeShader.usf", "MainComputeShader", SF_Compute);
 
-void FComputeShaderExample::RunComputeShader_RenderThread(FRHICommandListImmediate& RHICmdList, const FShaderUsageExampleParameters& DrawParameters, FUnorderedAccessViewRHIRef ComputeShaderOutputUAV)
+void FComputeShaderExample::RunComputeShader_RenderThread(FRHICommandListImmediate& RHICmdList, const FShaderUsageExampleParameters& DrawParameters, FUnorderedAccessViewRHIRef ComputeShaderOutputUAV, FUnorderedAccessViewRHIRef DstBufferUAV)
 {
 	QUICK_SCOPE_CYCLE_COUNTER(STAT_ShaderPlugin_ComputeShader); // Used to gather CPU profiling data for the UE4 session frontend
 	SCOPED_DRAW_EVENT(RHICmdList, ShaderPlugin_Compute); // Used to profile GPU activity and add metadata to be consumed by for example RenderDoc
 
 	UnbindRenderTargets(RHICmdList);
 	RHICmdList.TransitionResource(EResourceTransitionAccess::ERWBarrier, EResourceTransitionPipeline::EGfxToCompute, ComputeShaderOutputUAV);
+	RHICmdList.TransitionResource(EResourceTransitionAccess::ERWBarrier, EResourceTransitionPipeline::EGfxToCompute, DstBufferUAV);
 	
 	FComputeShaderExampleCS::FParameters PassParameters;
+	PassParameters.SrcTexture = GBlackTexture->TextureRHI;
 	PassParameters.OutputTexture = ComputeShaderOutputUAV;
+	PassParameters.DstBuffer = DstBufferUAV;
 	PassParameters.TextureSize = FVector2D(DrawParameters.GetRenderTargetSize().X, DrawParameters.GetRenderTargetSize().Y);
 	PassParameters.SimulationState = DrawParameters.SimulationState;
 
@@ -70,4 +75,5 @@ void FComputeShaderExample::RunComputeShader_RenderThread(FRHICommandListImmedia
 										   FMath::DivideAndRoundUp(DrawParameters.GetRenderTargetSize().Y, NUM_THREADS_PER_GROUP_DIMENSION), 1));
 
 	RHICmdList.TransitionResource(EResourceTransitionAccess::EReadable, EResourceTransitionPipeline::EComputeToGfx, ComputeShaderOutputUAV);
+	RHICmdList.TransitionResource(EResourceTransitionAccess::EReadable, EResourceTransitionPipeline::EComputeToGfx, DstBufferUAV);
 }

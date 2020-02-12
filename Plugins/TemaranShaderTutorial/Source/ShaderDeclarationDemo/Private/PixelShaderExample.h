@@ -13,5 +13,5 @@
 class FPixelShaderExample
 {
 public:
-	static void DrawToRenderTarget_RenderThread(FRHICommandListImmediate& RHICmdList, const FShaderUsageExampleParameters& DrawParameters, FTextureRHIRef ComputeShaderOutput);
+	static void DrawToRenderTarget_RenderThread(FRHICommandListImmediate& RHICmdList, const FShaderUsageExampleParameters& DrawParameters, FTextureRHIRef ComputeShaderOutput, FShaderResourceViewRHIRef ComputeShaderOutputBuffer);
 };

@@ -136,9 +136,12 @@ void FShaderDeclarationDemoModule::Draw_RenderThread(FRHICommandListImmediate& R
 		GRenderTargetPool.FindFreeElement(RHICmdList, ComputeShaderOutputDesc, ComputeShaderOutput, TEXT("ShaderPlugin_ComputeShaderOutput"));
 	}
 
-	FComputeShaderExample::RunComputeShader_RenderThread(RHICmdList, DrawParameters, ComputeShaderOutput->GetRenderTargetItem().UAV);
+	FRWBuffer TestRWBuffer;
+	TestRWBuffer.Initialize(sizeof(float) * 4, DrawParameters.GetRenderTargetSize().X * DrawParameters.GetRenderTargetSize().Y, PF_A32B32G32R32F);
 
-	FPixelShaderExample::DrawToRenderTarget_RenderThread(RHICmdList, DrawParameters, ComputeShaderOutput->GetRenderTargetItem().TargetableTexture);
+	FComputeShaderExample::RunComputeShader_RenderThread(RHICmdList, DrawParameters, ComputeShaderOutput->GetRenderTargetItem().UAV, TestRWBuffer.UAV);
+
+	FPixelShaderExample::DrawToRenderTarget_RenderThread(RHICmdList, DrawParameters, ComputeShaderOutput->GetRenderTargetItem().TargetableTexture, TestRWBuffer.SRV);
 }
 
 void FShaderDeclarationDemoModule::HandlePreRender()

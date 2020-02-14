@@ -26,12 +26,10 @@ public:
 		SHADER_PARAMETER(uint32, TotalSize)
 	END_SHADER_PARAMETER_STRUCT()
 
-	enum
-	{
-		NUM_THREADS_PER_GROUP_DIMENSION = 64
-	};
-
 public:
+
+	enum { ThreadGroupSize = 64 };
+
 	static bool ShouldCompilePermutation(const FGlobalShaderPermutationParameters& Parameters)
 	{
 		return IsFeatureLevelSupported(Parameters.Platform, ERHIFeatureLevel::ES3_1);
@@ -41,7 +39,7 @@ public:
 	{
 		FGlobalShader::ModifyCompilationEnvironment(Parameters, OutEnvironment);
 
-		OutEnvironment.SetDefine(TEXT("THREADGROUPSIZE1"), NUM_THREADS_PER_GROUP_DIMENSION);
+		OutEnvironment.SetDefine(TEXT("THREADGROUPSIZE1"), ThreadGroupSize);
 	}
 };
 
@@ -102,7 +100,7 @@ void FVertexFromCSExample::RunComputeShader_RenderThread(FRHICommandListImmediat
 	TShaderMapRef<FVertexFromCSExampleCS> ComputeShader(GetGlobalShaderMap(GMaxRHIFeatureLevel));
 
 	FComputeShaderUtils::Dispatch(RHICmdList, *ComputeShader, PassParameters,
-		FIntVector(NUM_VERTS / (int)FVertexFromCSExampleCS::NUM_THREADS_PER_GROUP_DIMENSION,
+		FIntVector(NUM_VERTS / (int)FVertexFromCSExampleCS::ThreadGroupSize,
 			1, 1));
 
 	RHICmdList.TransitionResource(EResourceTransitionAccess::EReadable, EResourceTransitionPipeline::EComputeToGfx, ComputeShaderOutputUAVs.VertexPositionUAV);

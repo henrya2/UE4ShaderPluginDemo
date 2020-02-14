@@ -26,7 +26,7 @@ public:
 		SHADER_PARAMETER(uint32, TotalSize)
 	END_SHADER_PARAMETER_STRUCT()
 
-	enum 
+	enum
 	{
 		NUM_THREADS_PER_GROUP_DIMENSION = 64
 	};

@@ -93,6 +93,7 @@ void AShaderUsageDemoCharacter::Tick(float DeltaSeconds)
 	{
 		DrawParameters.SimulationState = ComputeShaderSimulationSpeed * TotalTimeSecs;
 		DrawParameters.ComputeShaderBlend = ComputeShaderBlend;
+		DrawParameters.ComputeRadius = FMath::Abs(FMath::Sin(TotalTimeSecs));
 		DrawParameters.StartColor = StartColor;
 		DrawParameters.EndColor = FColor(EndColorBuildup * 255, 0, 0, 255);
 	}
@@ -100,7 +101,7 @@ void AShaderUsageDemoCharacter::Tick(float DeltaSeconds)
 	// If doing this for realsies, you should avoid doing this every frame unless you have to of course.
 	// We set it every frame here since we're updating the end color and simulation state. Boop.
 	FShaderDeclarationDemoModule::Get().UpdateParameters(DrawParameters);
-	FShaderDeclarationDemoModule::Get().DrawTarget();
+	FShaderDeclarationDemoModule::Get().DrawTarget(EShaderTestSampleType::ComputeToVertexBuffer);
 }
 
 void AShaderUsageDemoCharacter::OnFire()

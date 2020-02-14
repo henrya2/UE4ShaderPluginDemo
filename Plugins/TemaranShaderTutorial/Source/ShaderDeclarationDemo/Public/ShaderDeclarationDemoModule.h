@@ -20,6 +20,8 @@ struct FShaderUsageExampleParameters
 	FColor EndColor;
 	float SimulationState;
 	float ComputeShaderBlend;
+
+	float ComputeRadius;
 	
 	FIntPoint GetRenderTargetSize() const
 	{
@@ -32,6 +34,7 @@ struct FShaderUsageExampleParameters
 		, StartColor(FColor::White)
 		, EndColor(FColor::White)
 		, SimulationState(1.0f)
+		, ComputeRadius(1.0f)
 	{
 		CachedRenderTargetSize = RenderTarget ? FIntPoint(RenderTarget->SizeX, RenderTarget->SizeY) : FIntPoint::ZeroValue;
 	}
@@ -65,6 +68,13 @@ private:
  * can be found in this presentation:
  * See: https://developer.nvidia.com/sites/default/files/akamai/gameworks/blog/GDC16/GDC16_gthomas_adunn_Practical_DX12.pdf
  */
+
+enum class EShaderTestSampleType
+{
+	ComputeAndPixel,
+	ComputeToVertexBuffer,
+};
+
 class SHADERDECLARATIONDEMO_API FShaderDeclarationDemoModule : public IModuleInterface
 {
 public:
@@ -93,7 +103,7 @@ public:
 	// different intervals to save on locking and GPU transfer time.
 	void UpdateParameters(FShaderUsageExampleParameters& DrawParameters);
 
-	void DrawTarget();
+	void DrawTarget(EShaderTestSampleType TestType = EShaderTestSampleType::ComputeAndPixel);
 
 private:
 	TRefCountPtr<IPooledRenderTarget> ComputeShaderOutput;
@@ -105,7 +115,9 @@ private:
 	FDelegateHandle HandlePreRenderHandle;
 
 	void PostResolveSceneColor_RenderThread(FRHICommandListImmediate& RHICmdList, class FSceneRenderTargets& SceneContext);
-	void Draw_RenderThread(FRHICommandListImmediate& RHICmdList, const FShaderUsageExampleParameters& DrawParameters);
+	void Draw_RenderThread(FRHICommandListImmediate& RHICmdList, const FShaderUsageExampleParameters& DrawParameters, EShaderTestSampleType Type = EShaderTestSampleType::ComputeAndPixel);
+
+	void RunComputeAndPixelSample_RenderThread(FRHICommandListImmediate& RHICmdList, const FShaderUsageExampleParameters& DrawParameters);
 
 	void HandlePreRender();
 };

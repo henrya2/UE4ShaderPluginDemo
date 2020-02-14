@@ -16,6 +16,7 @@
 #include "RenderTargetPool.h"
 #include "Runtime/Core/Public/Modules/ModuleManager.h"
 #include "Engine/Engine.h"
+#include "VertexFromCSExample.h"
 
 IMPLEMENT_MODULE(FShaderDeclarationDemoModule, ShaderDeclarationDemo)
 
@@ -23,6 +24,9 @@ IMPLEMENT_MODULE(FShaderDeclarationDemoModule, ShaderDeclarationDemo)
 DECLARE_GPU_STAT_NAMED(ShaderPlugin_Render, TEXT("ShaderPlugin: Root Render"));
 DECLARE_GPU_STAT_NAMED(ShaderPlugin_Compute, TEXT("ShaderPlugin: Render Compute Shader"));
 DECLARE_GPU_STAT_NAMED(ShaderPlugin_Pixel, TEXT("ShaderPlugin: Render Pixel Shader"));
+
+DECLARE_GPU_STAT_NAMED(ShaderPlugin_VertexCompute, TEXT("ShaderPlugin: Render Compute Shader for Vertex"))
+DECLARE_GPU_STAT_NAMED(ShaderPlugin_VertexFromCSVertexPixel, TEXT("ShaderPlugin: Render VertexFromC Vertex and Pixel Shader"))
 
 void FShaderDeclarationDemoModule::StartupModule()
 {
@@ -86,7 +90,7 @@ void FShaderDeclarationDemoModule::UpdateParameters(FShaderUsageExampleParameter
 	//RenderEveryFrameLock.Unlock();
 }
 
-void FShaderDeclarationDemoModule::DrawTarget()
+void FShaderDeclarationDemoModule::DrawTarget(EShaderTestSampleType TestType /*= EShaderTestSampleType::ComputeAndPixel*/)
 {
 	if (!bCachedParametersValid)
 		return;
@@ -95,9 +99,9 @@ void FShaderDeclarationDemoModule::DrawTarget()
 	auto* ThisPtr = this;
 
 	ENQUEUE_RENDER_COMMAND(DrawTargetCommand)(
-		[ThisPtr, Copy](FRHICommandListImmediate& RHICmdList)
+		[ThisPtr, Copy, TestType](FRHICommandListImmediate& RHICmdList)
 	{
-		ThisPtr->Draw_RenderThread(RHICmdList, Copy);
+		ThisPtr->Draw_RenderThread(RHICmdList, Copy, TestType);
 	}
 	);
 }
@@ -117,10 +121,24 @@ void FShaderDeclarationDemoModule::PostResolveSceneColor_RenderThread(FRHIComman
 	Draw_RenderThread(RHICmdList, Copy);
 }
 
-void FShaderDeclarationDemoModule::Draw_RenderThread(FRHICommandListImmediate& RHICmdList, const FShaderUsageExampleParameters& DrawParameters)
+void FShaderDeclarationDemoModule::Draw_RenderThread(FRHICommandListImmediate& RHICmdList, const FShaderUsageExampleParameters& DrawParameters, EShaderTestSampleType Type /*= EShaderTestSampleType::ComputeAndPixel*/)
 {
 	check(IsInRenderingThread());
 
+	switch (Type)
+	{
+	case EShaderTestSampleType::ComputeAndPixel:
+		RunComputeAndPixelSample_RenderThread(RHICmdList, DrawParameters);
+		break;
+
+	case EShaderTestSampleType::ComputeToVertexBuffer:
+		FVertexFromCSExample::RunVertexFromCS_RenderThread(RHICmdList, DrawParameters);
+		break;
+	}
+}
+
+void FShaderDeclarationDemoModule::RunComputeAndPixelSample_RenderThread(FRHICommandListImmediate& RHICmdList, const FShaderUsageExampleParameters& DrawParameters)
+{
 	if (!DrawParameters.RenderTarget)
 	{
 		return;

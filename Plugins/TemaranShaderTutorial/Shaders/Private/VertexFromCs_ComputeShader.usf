@@ -1,0 +1,29 @@
+
+Texture2D SrcTexture;
+RWBuffer<float> VertexPosition;
+RWBuffer<float> VertexColor;
+float Radius;
+uint TotalSize;
+
+[numthreads(THREADGROUPSIZE1, 1, 1)]
+void MainComputeShader(uint3 ThreadId : SV_DispatchThreadID)
+{
+	uint storePos = ThreadId.x;
+
+	uint size = TotalSize;
+
+	float alpha = 2.0 * 3.14159265359 * ((float(storePos) / float(size)));
+
+	float4 position = float4(sin(alpha) * Radius, cos(alpha) * Radius, 0.0, 1.0);
+	VertexPosition[storePos * 4 + 0] = position.x;
+	VertexPosition[storePos * 4 + 1] = position.y;
+	VertexPosition[storePos * 4 + 2] = position.z;
+	VertexPosition[storePos * 4 + 3] = position.w;
+
+	float4 srcColor = float4(SrcTexture.Load(int3(0, 0, 0)).rgb, 0);
+	float4 color = float4(float(storePos) / float(size), 0.0, 1.0, 1.0);
+	VertexColor[storePos * 4 + 0] = color.r;
+	VertexColor[storePos * 4 + 1] = color.g;
+	VertexColor[storePos * 4 + 2] = color.b;
+	VertexColor[storePos * 4 + 3] = color.a + srcColor.r;
+}

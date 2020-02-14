@@ -1,0 +1,21 @@
+
+// VERTEX SHADER
+////////////////
+
+void MainVertexShader(float4 InPosition : ATTRIBUTE0, float4 InColor : ATTRIBUTE1, out float4 OutColor:COLOR0, out float4 OutPosition : SV_POSITION)
+{
+	OutPosition = InPosition;
+	OutColor = float4(InColor.rgb, 1.0);
+}
+
+// PIXEL SHADER
+///////////////
+
+float2 TextureSize;
+
+
+void MainPixelShader(in float4 InColor : COLOR0, out float4 OutColor : SV_Target0)
+{
+    //OutColor = float4(1.0, 0.0, 0.0, 1.0);
+	OutColor = InColor;
+}

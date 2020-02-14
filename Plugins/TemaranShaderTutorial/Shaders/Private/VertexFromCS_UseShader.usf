@@ -17,5 +17,9 @@ float2 TextureSize;
 void MainPixelShader(in float4 InColor : COLOR0, out float4 OutColor : SV_Target0)
 {
     //OutColor = float4(1.0, 0.0, 0.0, 1.0);
+	float a = length(TextureSize);
+
 	OutColor = InColor;
+
+	OutColor.a = clamp(0, 1.0, a);
 }

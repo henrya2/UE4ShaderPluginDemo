@@ -56,9 +56,9 @@ void FVertexFromCSExample::RunVertexFromCS_RenderThread(FRHICommandListImmediate
 	SCOPED_DRAW_EVENT(RHICmdList, ShaderPlugin_Render); // Used to profile GPU activity and add metadata to be consumed by for example RenderDoc
 
 	FRWBuffer VertexPositionRWBuffer;
-	VertexPositionRWBuffer.Initialize(sizeof(float), (NUM_VERTS + 1) * 4, PF_R32_FLOAT);
+	VertexPositionRWBuffer.Initialize(sizeof(float), (NUM_VERTS + 1) * 4, PF_R32_SINT);
 	FRWBuffer VertexColorRWBuffer;
-	VertexColorRWBuffer.Initialize(sizeof(float), (NUM_VERTS + 1) * 4, PF_R32_FLOAT);
+	VertexColorRWBuffer.Initialize(sizeof(float), (NUM_VERTS + 1) * 4, PF_R32_SINT);
 
 	FComputeShaderOutputUAVs OutputUAVs;
 	OutputUAVs.VertexPositionUAV = VertexPositionRWBuffer.UAV;

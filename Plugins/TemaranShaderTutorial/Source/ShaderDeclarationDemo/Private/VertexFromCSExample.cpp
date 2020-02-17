@@ -10,7 +10,7 @@
 #include "RHICommandList.h"
 #include "PipelineStateCache.h"
 
-#define NUM_VERTS 256
+#define NUM_VERTS 524288
 
 class FVertexFromCSExampleCS : public FGlobalShader
 {
@@ -200,7 +200,7 @@ void FVertexFromCSExample::DrawToRenderTarget_RenderThread(FRHICommandListImmedi
 	PassParameters.TextureSize = FVector2D(DrawParameters.GetRenderTargetSize().X, DrawParameters.GetRenderTargetSize().Y);
 	SetShaderParameters(RHICmdList, *PixelShader, PixelShader->GetPixelShader(), PassParameters);
 
-	TArray<uint16> Indices;
+	TArray<uint32> Indices;
 	Indices.SetNum(NUM_VERTS * 3);
 	for (int i = 0; i < NUM_VERTS; ++i)
 	{
@@ -210,9 +210,9 @@ void FVertexFromCSExample::DrawToRenderTarget_RenderThread(FRHICommandListImmedi
 	}
 
 	FRHIResourceCreateInfo CreateInfo;
-	FIndexBufferRHIRef IndexBufferRHI = RHICreateIndexBuffer(sizeof(uint16), sizeof(uint16) * 3 * NUM_VERTS, BUF_Volatile, CreateInfo);
-	void* VoidPtr2 = RHILockIndexBuffer(IndexBufferRHI, 0, sizeof(uint16) * 3 * NUM_VERTS, RLM_WriteOnly);
-	FPlatformMemory::Memcpy(VoidPtr2, Indices.GetData(), sizeof(uint16) * 3 * NUM_VERTS);
+	FIndexBufferRHIRef IndexBufferRHI = RHICreateIndexBuffer(sizeof(uint32), sizeof(uint32) * 3 * NUM_VERTS, BUF_Volatile, CreateInfo);
+	void* VoidPtr2 = RHILockIndexBuffer(IndexBufferRHI, 0, sizeof(uint32) * 3 * NUM_VERTS, RLM_WriteOnly);
+	FPlatformMemory::Memcpy(VoidPtr2, Indices.GetData(), sizeof(uint32) * 3 * NUM_VERTS);
 	RHIUnlockIndexBuffer(IndexBufferRHI);
 
 	// Draw
